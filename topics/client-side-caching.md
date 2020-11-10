@@ -248,6 +248,27 @@ In this mode we have the following main behaviors:
 * The server will consume a CPU proportional to the number of registered prefixes. If you have just a few, it is hard to see any difference. With a big number of prefixes the CPU cost can become quite large.
 * In this mode the server can perform the optimization of creating a single reply for all the clients subscribed to a given prefix, and send the same reply to all. This helps to lower the CPU usage.
 
+### Caveats to broadcast alongside maxmemory-policy
+
+The combination of clients requesting broadcast invalidation from a
+server with a configured maxmemory-policy must be used with
+caution. Several behaviors are relevant:
+* Broadcasting can have a multiplier effect on the traffic outbound
+  from Redis to clients
+* The memory consumed by (growable) client output buffers is counted
+  towards configured maxmemory
+* client-output-buffer-limit is not configured by default
+
+It is possible for evicted keys to generate very high client output
+traffic. This can create additional memory pressure on the Redis due
+to quickly growing client output buffers, which in turn can cause
+further evictions and create a feedback loop. This ultimately can
+cause Redis to attempt eviction of its entire keyset and can cause
+maxmemory to be exceeded without bound (possibly resulting in an OOM
+kill). For this reason it is recommended that if broadcast
+invalidation must be used with maxmemory-policy that a reasonable
+client-buffer-output-limit is also configured.
+
 ## The NOLOOP option
 
 By default client side tracking will send invalidation messages even to
